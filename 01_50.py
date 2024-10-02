@@ -2,7 +2,7 @@
 # # Project Euler
 
 # %%
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from datetime import date
 from functools import cache, reduce
 from io import StringIO
@@ -14,6 +14,7 @@ import pandas as pd
 import pyperclip
 
 # from icecream import ic
+
 # from IPython.display import Latex, Markdown, display
 from more_itertools import sieve
 from sympy import prevprime
@@ -28,6 +29,33 @@ def print_and_copy_answer(func: Callable):
         return result
 
     return wrapper
+
+
+def open_input(filename: str) -> str:
+    """
+    Opens and reads the contents of a file.
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be opened.
+    Returns
+    -------
+    str
+        The contents of the file as a string.
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    PermissionError
+        If the user doesn't have permission to read the file.
+    IOError
+        For other I/O related errors.
+    """
+    try:
+        with open(filename, encoding="utf-8") as file:
+            return file.read()
+    except (FileNotFoundError, PermissionError, IOError) as e:
+        raise e
 
 
 # %% [markdown]
@@ -62,9 +90,7 @@ print(multiples_of_3_or_5(1000))
 
 # %%
 def fibonacci_rec(n: int) -> int:
-    if n in {0, 1}:
-        return n
-    return fibonacci_rec(n - 1) + fibonacci_rec(n - 2)
+    return n if n in {0, 1} else fibonacci_rec(n - 1) + fibonacci_rec(n - 2)
 
 
 def understandable(limit):
@@ -136,10 +162,7 @@ def find_factor(n, g):
         y = g(g(y))
         d = gcd(abs(x - y), n)
 
-    if d == n:
-        return "failure"
-    else:
-        return d
+    return "failure" if d == n else d
 
 
 # %%
@@ -537,6 +560,7 @@ def triangle_number(n: int) -> int:
     return n * (n + 1) / 2
 
 
+@cache
 def generate_divisors(n: int) -> list[int]:
     divisors = []
     for d in range(1, isqrt(n) + 1):
@@ -719,10 +743,10 @@ def collatz_sequence(n: int) -> int:
 
 @print_and_copy_answer
 def longest_collatz_sequence(limit: int) -> int:
-    return max(range(2, int(limit)), key=collatz_sequence)
+    return max(range(2, limit), key=collatz_sequence)
 
 
-longest_collatz_sequence(1e6)
+longest_collatz_sequence(int(1e6))
 
 
 # %% [markdown]
@@ -1024,19 +1048,114 @@ count_weekday_date_range()
 
 
 # %%
-@cache
-def factorial(num: int):
-    result = 1
-    if num == 0 or num == 1:
-        return result
-    for i in range(1, num + 1):
-        result *= i
-    return result
-
-
 @print_and_copy_answer
 def factorial_digit_sum(number: int) -> int:
+    # return sum(map(int, f"{factorial(number)}"))
     return sum(map(int, f"{factorial(number)}"))
 
 
 factorial_digit_sum(100)
+
+# %% [markdown]
+# ## 21. Amicable Numbers
+#
+# Let $d(n)$ be defined as the sum of proper divisors of $n$ (numbers less than
+# $n$ which divide evenly into $n$).
+#
+# If $d(a) = b$ and $d(b) = a$, where $a \ne b$, then $a$ and $b$ are an
+# amicable pair and each of $a$ and $b$ are called amicable numbers.
+#
+# For example, the proper divisors of $220$ are $1, 2, 4, 5, 10, 11, 20, 22, 44,
+# 55$ and $110$; therefore $d(220) = 284$. The proper divisors of $284$ are $1,
+# 2, 4, 71$ and $142$; so $d(284) = 220$.
+#
+# Evaluate the sum of all the amicable numbers under $10000$.
+
+
+# %%
+@cache
+def d(n: int) -> int:
+    """
+    Sum of proper divisors of n.
+    """
+    return sum(generate_divisors(n)) - n
+
+
+@print_and_copy_answer
+def amicable_numbers(limit: int) -> int:
+    return sum(a for a in range(limit) if (b := d(a)) != a and d(b) == a)
+
+
+amicable_numbers(10000)
+
+# %% [markdown]
+# ## 22. Names Scores
+#
+# Using [names](0022_names.txt), begin by sorting it into alphabetical
+# order. Then working out the alphabetical value for each name, multiply this
+# value by its alphabetical position in the list to obtain a name score.
+#
+# For example, when the list is sorted into alphabetical order, COLIN, which is
+# worth **3 + 15 + 12 + 9 + 14 = 53**, is the **938**th name in the list. So,
+# COLIN would obtain a score of **938 × 53 = 49714**.
+#
+# What is the total of all the name scores in the file?
+
+# %%
+names = open_input("0022_names.txt")
+
+
+# %%
+# @print_and_copy_answer
+def name_scores(name_list_str: str) -> int:
+    alphabet: dict[str, int] = dict(
+        zip(map(chr, range(ord("a"), ord("z") + 1)), range(1, 26 + 1))
+    )
+    return sum(
+        prod((i, sum(map(lambda letter: alphabet[letter], name))))
+        for i, name in enumerate(
+            sorted(name_list_str.lower().replace('"', "").split(",")), start=1
+        )
+    )
+
+
+# %%
+name_scores(names)
+
+
+# %%
+# @print_and_copy_answer
+def name_scores_sug(name_list_str: str) -> int:
+    @cache
+    def letter_score(letter: str) -> int:
+        return ord(letter) - ord("a") + 1
+
+    return sum(
+        i * sum(letter_score(letter) for letter in name)
+        for i, name in enumerate(
+            sorted(name_list_str.lower().replace('"', "").split(",")), start=1
+        )
+    )
+
+
+# %% [markdown]
+# ## 23. Non-Abundant Sums
+#
+# A perfect number is a number for which the sum of its proper divisors is
+# exactly equal to the number. For example, the sum of the proper divisors of
+# **28** would be **1 + 2 + 4 + 7 + 14 = 28**, which means that **28** is a
+# perfect number.
+#
+# A number **n** is called deficient if the sum of its proper divisors is less
+# than **n** and it is called abundant if this sum exceeds **n**.
+#
+# As **12** is the smallest abundant number, **1 + 2 + 3 + 4 + 6 = 16**, the
+# smallest number that can be written as the sum of two abundant numbers is
+# **24**. By mathematical analysis, it can be shown that all integers greater
+# than **28123** can be written as the sum of two abundant numbers. However,
+# this upper limit cannot be reduced any further by analysis even though it is
+# known that the greatest number that cannot be expressed as the sum of two
+# abundant numbers is less than this limit.
+#
+# Find the sum of all the positive integers which cannot be written as the sum
+# of two abundant numbers.
