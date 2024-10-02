@@ -34,6 +34,7 @@ def print_and_copy_answer(func: Callable):
 def open_input(filename: str) -> str:
     """
     Opens and reads the contents of a file.
+    
     Parameters
     ----------
     filename : str
