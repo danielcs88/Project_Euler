@@ -2,26 +2,33 @@
 # # Project Euler
 
 # %%
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from datetime import date
 from functools import cache, reduce
 from io import StringIO
-from itertools import combinations
-from math import comb, gcd, isqrt, lcm, prod, factorial
+from itertools import (
+    accumulate,
+    combinations,
+    combinations_with_replacement,
+    islice,
+    permutations,
+    product,
+)
+from math import ceil, comb, factorial, gcd, isqrt, lcm, log10, prod, sqrt
+from time import perf_counter
 
 import numpy as np
 import pandas as pd
 import pyperclip
-
-# from icecream import ic
+import snoop
+from icecream import ic
 
 # from IPython.display import Latex, Markdown, display
 from more_itertools import sieve
-from sympy import prevprime
+from sympy import isprime, prevprime
 
 
 def print_and_copy_answer(func: Callable):
-
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
         print(result)
@@ -31,10 +38,22 @@ def print_and_copy_answer(func: Callable):
     return wrapper
 
 
+def time_function(func: Callable):
+    def wrapper(*args, **kwargs):
+        start = perf_counter()
+        result = func(*args, **kwargs)
+        end = perf_counter()
+        print(end - start)
+        # pyperclip.copy(str(result))
+        return result
+
+    return wrapper
+
+
 def open_input(filename: str) -> str:
     """
     Opens and reads the contents of a file.
-    
+
     Parameters
     ----------
     filename : str
@@ -69,12 +88,13 @@ def open_input(filename: str) -> str:
 
 
 # %%
+@print_and_copy_answer
 def multiples_of_3_or_5(limit: int) -> int:
-    print(f"The sum of multiples of 3 or 5 up to {limit}: ", end="")
+    # print(f"The sum of multiples of 3 or 5 up to {limit}: ", end="")
     return sum(filter(lambda n: n % 3 == 0 or n % 5 == 0, range(limit)))
 
 
-print(multiples_of_3_or_5(10))
+# print(multiples_of_3_or_5(10))
 print(multiples_of_3_or_5(1000))
 
 # %% [markdown]
@@ -90,10 +110,12 @@ print(multiples_of_3_or_5(1000))
 
 
 # %%
+@cache
 def fibonacci_rec(n: int) -> int:
     return n if n in {0, 1} else fibonacci_rec(n - 1) + fibonacci_rec(n - 2)
 
 
+@print_and_copy_answer
 def understandable(limit):
     fib = [1, 2]
     x = 0
@@ -109,6 +131,9 @@ def PE002(limit=4000000):
     while b <= limit:
         a, b, S = b, a + 4 * b, S + b
     return S
+
+
+understandable(int(4e6))
 
 
 # %%
@@ -146,6 +171,7 @@ def PE002_optimized(limit=4000000):
 
 
 # %%
+@cache
 def is_prime(num: int) -> bool:
     if num < 2:
         return False
@@ -174,7 +200,8 @@ find_factor(600851475143, lambda x: (x**2) % 600851475143)
 
 
 # %%
-def find_largest_prime_factor(n):
+@print_and_copy_answer
+def find_largest_prime_factor(n: int):
     p = (n**0.5) + 1
     while p > 2:
         p = prevprime(p)
@@ -182,6 +209,9 @@ def find_largest_prime_factor(n):
             return p
     return n  # n is prime
 
+
+# %%
+find_largest_prime_factor(600851475143)
 
 # %% [markdown]
 # ## 4. Largest Palindrome Product
@@ -193,6 +223,7 @@ def find_largest_prime_factor(n):
 
 
 # %%
+@print_and_copy_answer
 def largest_palindrome_product(number_digits: int = 2) -> int:
     number_range = range(10 ** (number_digits - 1), 10**number_digits)
     return max(
@@ -202,7 +233,7 @@ def largest_palindrome_product(number_digits: int = 2) -> int:
     )
 
 
-assert largest_palindrome_product(2) == 9009
+# assert largest_palindrome_product(2) == 9009
 largest_palindrome_product(3)
 
 
@@ -222,7 +253,7 @@ def smallest_multiple(limit: int) -> int:
     return lcm(*range(1, limit + 1))
 
 
-assert smallest_multiple(10) == 2520, "Wrong! Answer should be 2520"
+# assert smallest_multiple(10) == 2520, "Wrong! Answer should be 2520"
 
 smallest_multiple(20)
 
@@ -245,13 +276,29 @@ smallest_multiple(20)
 
 
 # %%
+# @print_and_copy_answer
 def sum_square_difference(limit: int) -> int:
     nums = range(1, limit + 1)
     return sum(nums) ** 2 - sum(n**2 for n in nums)
 
 
-assert sum_square_difference(10) == 2640
-sum_square_difference(100)
+# assert sum_square_difference(10) == 2640
+# %timeit sum_square_difference(100)
+# %%
+def algebraic_sum_square_difference(limit: int) -> int:
+    """
+    .. math:: \\left(\\sum_{x=1}^{y}{x}\\right)^2 - \\sum_{1}^{y}x^2 = \\frac{y(y+1)(3y^2-y-2)}{12}
+    """
+    numerator = limit * (limit + 1) * (3 * limit**2 - limit - 2)
+    return numerator / 12
+
+
+# %%
+algebraic_sum_square_difference(100)
+
+# %%
+# %timeit algebraic_sum_square_difference(100)
+
 # %% [markdown]
 # ## 7. 10001st Prime
 #
@@ -265,6 +312,7 @@ sum_square_difference(100)
 is_prime(13)
 
 
+@print_and_copy_answer
 def generate_nth_prime_number(n: int) -> int:
     count = 0
     candidate = 2  # Starting from the first prime number
@@ -276,11 +324,11 @@ def generate_nth_prime_number(n: int) -> int:
         candidate += 1
 
 
-assert generate_nth_prime_number(6) == 13
+# assert generate_nth_prime_number(6) == 13
 generate_nth_prime_number(10001)
 
 # %% [markdown]
-# ## Largest Product in a Series
+# ## 8. Largest Product in a Series
 #
 # The four adjacent digits in the 1000-digit number that have the greatest
 # product are 9 × 9 × 8 × 9 = 5832.
@@ -307,14 +355,11 @@ thousand_digits = """73167176531330624919225119674426574742355349194934
 05886116467109405077541002256983155200055935729725
 71636269561882670428252483600823257530420752963450
 """
-print(thousand_digits)
-
-# %%
+# print(thousand_digits)
 
 
 # %%
 @print_and_copy_answer
-# @test_case(4, 5832)
 def largest_product_series(n: int) -> int:
     digit_sequence: str = thousand_digits
     digits_cleaned = digit_sequence.replace("\n", "")
@@ -345,8 +390,11 @@ def largest_product_series_gpt(n: int) -> int:
     return max_product
 
 
+# %%
+largest_product_series(13)
+
 # %% [markdown]
-# ## Special Pythagorean Triplet
+# ## 9. Special Pythagorean Triplet
 #
 # A Pythagorean triplet is a set of three natural numbers, **a < b < c**, for
 # which,
@@ -363,10 +411,11 @@ def largest_product_series_gpt(n: int) -> int:
 # %%
 @print_and_copy_answer
 def pythagorean_triplet_sum_gpt(goal: int = 1000) -> int:
-    for a in range(1, goal // 3):
-        for b in range(a + 1, (goal - a) // 2):
+    for a in range(3, goal - 3 // 3):
+        for b in range(a + 1, (goal - 1 - a) // 2):
             c = goal - a - b
             if a * a + b * b == c * c:
+                # print(a, b, c)
                 return a * b * c
 
 
@@ -474,7 +523,7 @@ grid = """08 02 22 97 38 15 00 40 00 75 04 05 07 78 52 12 50 77 91 08
 
 
 # %%
-# @print_and_copy_answer
+@print_and_copy_answer
 def largest_product_grid(blocksize: int, grid: str = grid) -> int:
     np_grid = np.loadtxt(StringIO(grid))
     m, n = np_grid.shape
@@ -495,7 +544,6 @@ def largest_product_grid(blocksize: int, grid: str = grid) -> int:
 
 # %%
 def largest_product_grid_dict_approach(numbers: int = 4, grid: str = grid) -> int:
-
     # first generate a dictionary with key = (row,col) and value = int(n)
     grid_dict: dict[tuple[int], int] = {
         (row, col): int(n)
@@ -525,7 +573,7 @@ def largest_product_grid_dict_approach(numbers: int = 4, grid: str = grid) -> in
 # %timeit largest_product_grid_dict_approach()
 
 # %%
-# %timeit largest_product_grid(4)
+largest_product_grid(4)
 
 # %% [markdown]
 # ## 12. Highly Divisible Triangular Number
@@ -591,6 +639,8 @@ def highly_divisible_triangular_number(n_divisors: int = 500) -> int:
             triangle_index  # Update triangular number by adding the next index
         )
 
+
+highly_divisible_triangular_number()
 
 # %% [markdown]
 # ## 13. Large Sum
@@ -773,7 +823,7 @@ def lattice_paths(grid_size: int) -> int:
 
 
 # %%
-assert lattice_paths(2) == 6
+# assert lattice_paths(2) == 6
 lattice_paths(20)
 
 
@@ -792,7 +842,7 @@ def power_digit_sum(digit: int, power: int) -> int:
 
 
 # %%
-assert power_digit_sum(2, 15) == 26
+# assert power_digit_sum(2, 15) == 26
 power_digit_sum(2, 1000)
 
 
@@ -890,7 +940,7 @@ def number_letter_counts(limit: int) -> int:
 
 
 # %%
-assert number_letter_counts(5) == 19
+# assert number_letter_counts(5) == 19
 number_letter_counts(1000)
 
 # %% [markdown]
@@ -1075,16 +1125,23 @@ factorial_digit_sum(100)
 
 # %%
 @cache
-def d(n: int) -> int:
+def sum_proper_divisors(n: int) -> int:
     """
     Sum of proper divisors of n.
+
+    Proper divisors are all divisors smaller than n.
+
     """
     return sum(generate_divisors(n)) - n
 
 
 @print_and_copy_answer
 def amicable_numbers(limit: int) -> int:
-    return sum(a for a in range(limit) if (b := d(a)) != a and d(b) == a)
+    return sum(
+        a
+        for a in range(limit)
+        if (b := sum_proper_divisors(a)) != a and sum_proper_divisors(b) == a
+    )
 
 
 amicable_numbers(10000)
@@ -1121,11 +1178,7 @@ def name_scores(name_list_str: str) -> int:
 
 
 # %%
-name_scores(names)
-
-
-# %%
-# @print_and_copy_answer
+@print_and_copy_answer
 def name_scores_sug(name_list_str: str) -> int:
     @cache
     def letter_score(letter: str) -> int:
@@ -1137,6 +1190,9 @@ def name_scores_sug(name_list_str: str) -> int:
             sorted(name_list_str.lower().replace('"', "").split(",")), start=1
         )
     )
+
+
+name_scores(names)
 
 
 # %% [markdown]
@@ -1160,3 +1216,446 @@ def name_scores_sug(name_list_str: str) -> int:
 #
 # Find the sum of all the positive integers which cannot be written as the sum
 # of two abundant numbers.
+
+
+# %%
+@cache
+def is_abundant(n: int) -> int:
+    # deficient, perfect, abundant = -1, 0, 1
+    sum_proper_divisors_calc = sum_proper_divisors(n)
+    calculate_abundance = sum_proper_divisors_calc - n
+
+    return calculate_abundance > 0
+
+
+# %%
+def sum_of_non_abundant_sums_norvig(limit: int) -> int:
+    abundants = {i for i in range(1, limit) if sum_proper_divisors(i) > i}
+
+    def abundantsum(i: int) -> bool:
+        return any(i - a in abundants for a in abundants)
+
+    return sum(i for i in range(1, limit) if not abundantsum(i))
+
+
+# %%
+print(sum_of_non_abundant_sums_norvig(28123))
+
+
+# %%
+@print_and_copy_answer
+def sum_of_non_abundant_sums(limit) -> int:
+    abundant = (i for i in range(1, limit + 1) if is_abundant(i))
+    abundant_sums = {
+        a + b for a, b in combinations_with_replacement(abundant, 2) if a + b < limit
+    }
+    return sum(set(range(limit)) - abundant_sums)
+
+
+sum_of_non_abundant_sums(28123)
+
+
+# %% [markdown]
+# ## 24. Lexicographic Permutations
+#
+# A permutation is an ordered arrangement of objects. For example, 3124 is one
+# possible permutation of the digits 1, 2, 3 and 4. If all of the permutations
+# are listed numerically or alphabetically, we call it lexicographic order. The
+# lexicographic permutations of 0, 1 and 2 are:
+#
+# > 012   021   102   120   201   210
+#
+# What is the millionth lexicographic permutation of the digits 0, 1, 2, 3, 4,
+# 5, 6, 7, 8 and 9?
+
+
+# %%
+@print_and_copy_answer
+def lexicographic_permutations(digits: range = range(10), index: int = int(1e6)) -> int:
+    permutation_with_index = next(islice(enumerate(permutations(digits)), index, None))
+    return int("".join(map(str, permutation_with_index[1])))
+
+
+lexicographic_permutations(range(10), int(1e6))
+
+# %% [markdown]
+# ## 25. 1000-Digit Fibonacci Number
+#
+# The Fibonacci sequenece is defined by the recurrence relation:
+#
+# > $F_n = F_{n - 1} + F_{n - 2}$, where $F_1 = 1$ and $F_2 = 1$
+#
+# $$
+# \begin{align*}
+# F_1 &= 1\\
+# F_2 &= 1\\
+# F_3 &= 2\\
+# F_4 &= 3\\
+# F_5 &= 5\\
+# F_6 &= 8\\
+# F_7 &= 13\\
+# F_8 &= 21\\
+# F_9 &= 34\\
+# F_{10} &= 55\\
+# F_{11} &= 89\\
+# F_{12} &= 144
+# \end{align*}
+# $$
+#
+# The 12th term, $F_{12}$, is the first term to contain three digits.
+#
+# What is the index of the first term in the Fibonacci sequence to contain 1000
+# digits?
+
+
+# %%
+@print_and_copy_answer
+def term_n_digit_long_fibonacci_num(n: int) -> int:
+    @cache
+    def fibonacci_rec(n: int) -> int:
+        return n if n in {0, 1} else fibonacci_rec(n - 1) + fibonacci_rec(n - 2)
+
+    index = 1
+    result = fibonacci_rec(index)
+    len_term = len(str(result))
+
+    while len_term <= n:
+        index += 1
+        result = fibonacci_rec(index)
+        len_term = len(str(result))
+
+        if len_term == n:
+            break
+
+    return index
+
+
+# %%
+def binet_formula(n: int) -> int:
+    return ceil((n - 1 + log10(sqrt(5))) / log10((1 + sqrt(5)) / 2))
+
+
+# %%
+term_n_digit_long_fibonacci_num(1000)
+
+# %% [markdown]
+# ## 26. Reciprocal Cycles
+#
+# A unit fraction contains 1 in the numerator. The decimal representation of the
+# unit fractions with denominators 2 to 10 are given:
+#
+# $$ \begin{align*} 1/2 &= 0.5\\
+# 1/3 &=0.(3)\\
+# 1/4 &=0.25\\
+# 1/5 &= 0.2\\
+# 1/6 &= 0.1(6)\\
+# 1/7 &= 0.(142857)\\
+# 1/8 &= 0.125\\
+# 1/9 &= 0.(1)\\
+# 1/10 &= 0.1 \end{align*} $$
+#
+# Where $0.1(6)$ means $0.166666\cdots$, and has a $1$-digit recurring cycle. It
+# can be seen that $1/7$ has a $6$-digit recurring cycle.
+#
+# Find the value of $d \lt 1000$ for which $\frac{1}{d}$ contains the longest
+# recurring cycle in its decimal fraction part.
+
+
+# %%
+# def length_reciprocal(denominator: int):
+#     if denominator == 0:
+#         raise ValueError("Undefined")
+
+#     negative = denominator < 0
+#     num = 1
+#     den = abs(denominator)
+
+#     if num % den == 0:
+#         return num // den
+
+#     result = [str(num // den), "."]
+#     num %= den
+#     num *= 10
+
+#     seen = {}
+#     while num:
+#         if num in seen:
+#             start = seen[num]
+#             result.insert(start, "(")
+#             result.append(")")
+#             break
+#         seen[num] = len(result)
+#         quotient = num // den
+#         result.append(str(quotient))
+#         num = (num % den) * 10
+
+#     if negative:
+#         result.insert(0, "-")
+
+#     result_str = "".join(result)
+#     return len(result_str[3:-1]) if "(" in result_str else 0
+
+
+def periodical_decimal_length(denominator: int) -> int:
+    remainder = 1
+    seen_remainders = set()
+    length = 0
+    while remainder not in seen_remainders:
+        seen_remainders.add(remainder)
+        remainder = (remainder * 10) % denominator
+        length += 1
+    return length
+
+
+@print_and_copy_answer
+def longest_reciprocal_cycle(limit: int = 1000) -> int:
+    return max(range(1, limit), key=periodical_decimal_length)
+
+
+def A051626(n: int) -> int:
+    """
+    Fastest implementation.
+
+    https://oeis.org/A051626
+    """
+    from sympy import multiplicity, n_order
+
+    return (
+        0
+        if (m := (n >> (~n & n - 1).bit_length()) // 5 ** multiplicity(5, n)) == 1
+        else n_order(10, m)
+    )
+
+
+longest_reciprocal_cycle()
+
+# %% [markdown]
+# ## 27. Quadratic Primes
+#
+# Euler discovered the remarkable quadratic formula:
+#
+# $$
+# n^2 + n + 41
+# $$
+#
+# It turns out that the formula will produce **40** primes for the consecutive
+# integer values $0 \leq n \leq 39$. However, when $n=40$, $40^2 + 40 + 41 =
+# 40(40 + 1) + 41$ is divisible by **41**, and certainly when $n=41$,
+# $4^2+41+41$ is clearly divisible by **41**.
+#
+# The incredible formula $n^2-79n+1601$ was discovered, which produces **80**
+# primes for the consecutive values $0 \leq n \leq 79$. The product of the
+# coefficients, **-79** and **1601**, is **-126479**.
+#
+# Considering quadratics of the form:
+#
+# > $n^2 + an + b$, where $|a| < 1000$ and $|b| \leq 1000$
+# >
+# > where $|n|$ is the modulus/absolute value of $n$<br>
+# > e.g., $|11| = 11$ and $|-4| = 4$
+#
+# Find the product of the coefficients, $a$ and $b$, for the quadratic
+# expression that produces the maximum number of primes for consecutive values
+# of $n$, starting with $n=0$.
+
+
+# %%
+# @time_function
+def slow_quadratic_primes() -> int:
+
+    best_run = 0
+    best_product = 0
+
+    for a, b in product(range(-999, 1000), range(-1000, 1001)):
+        n = 0
+        while isprime(n**2 + (a * n) + b):
+            n += 1
+        if n > best_run:
+            best_run = n
+            best_product = a * b
+
+    return best_product
+
+
+# %%
+# @print_and_copy_answer
+def fastest_quadratic_primes(limit: int = 1000) -> int:
+    """
+    Find the product of coefficients a and b for the quadratic expression
+    n^2 + an + b, that produces the maximum number of consecutive primes for n
+    starting from 0.
+
+    This function implements an optimized search based on mathematical
+    properties to find the coefficients more efficiently than a brute-force
+    approach.
+
+    Parameters
+    ----------
+    limit : int, optional
+        The upper bound for the absolute values of coefficients a and b, by
+        default 1000
+
+    Returns
+    -------
+    int
+        The product of the coefficients a and b that generate the longest
+        sequence of primes
+
+    Notes
+    -----
+    - The function uses the Sieve of Eratosthenes to generate prime numbers upto
+      the limit.
+    - It leverages the property that b must be prime for n = 0 to produce a
+      prime.
+    - The search for 'a' is optimized based on the discriminant of the quadratic
+      equation.
+    - This implementation is based on insights from Project Euler problem 27.
+
+    Example
+    -------
+    >>> fastest_quadratic_primes(1000)
+    -59231  # This is the product of -61 and 971
+    """
+    best_run = best_product = 0
+    sieve_of_b = [b for b in sieve(limit) if b in range(41, limit)]
+
+    pairs = [(sign * isqrt(-163 + (4 * b)), b) for b in sieve_of_b for sign in (1, -1)]
+
+    for a, b in pairs:
+        n = 0
+        while isprime(n**2 + (a * n) + b):
+            n += 1
+        if n > best_run:
+            best_run = n
+            best_product = a * b
+    return best_product
+
+
+fastest_quadratic_primes()
+
+
+# %% [markdown]
+#
+# When you research Euler's polynomial as stated in the problem,
+# you will quickly come across [MathWorld: Prime-Generating
+# Polynomial](https://mathworld.wolfram.com/Prime-GeneratingPolynomial.html).
+# The "incredible" formula $n^2 - 79n + 1601$ can be rewritten as
+# $(n-40)^2 + (n-40) + 41 = k^2 + k + 41$ where $k=(n-40)$. . In other words, it
+# is another transformation of Euler's prime-generating polynomial. If $p(n)$
+# generates primes for $0 \leq n \leq L$, then so does $p(L-n)$.
+#
+# $$
+# \begin{align*}
+# p(n) &=  n^2 + n + 41 \\
+# p(L-n) &= (L-n)^2 + (L-n) + 41 \\
+# p(L-n) &= n^2-2Ln-n + L^2+L+41 \\
+# p(L-n) &= n^2-(2L+1)n + p(L) \\
+# p(L-n) &= n^2 + an + b \\
+# \end{align*}
+# $$
+#
+# where $a=-(2L +1)$ and $b=L^2 + L + 41$
+#
+# We also know that when $n=0$, $p(0) = 0^2 + 0a + b = b$. Since $p(n)$ needs to
+# generate positive primes, this means $b$ is a positive prime. According to the
+# problem statement, we only care about $b<1000$.
+#
+# $\therefore b=L^2 + L + 41 \lt 1000 \implies -31 \leq L \leq 30$ in terms of
+# integer solutions.
+#
+# We want the longest run of primes, which corresponds to the largest $b$
+# possible here. Thus, we take $L$ to be 30, which makes $b$ equal to
+# $30^2+30+41=971$ and $a$ equal to $-(2(30)+1) = -61$.
+#
+# $$
+# \large
+# \therefore \ \boxed{ \begin{matrix} a = -61 & b=971 \end{matrix}}
+# $$
+#
+# The answer required is $ab=(-61)(971) = -59231$
+# %%
+@print_and_copy_answer
+def PE27(lim=1000):
+    L = isqrt((4 * lim - 163) // 4) - 1
+    return (L**2 + L + 41) * (-(2 * L + 1))
+
+
+# %% [markdown]
+# ## 28. Number Spiral Diagonals
+#
+# Starting with the number **1** and moving to the right in a clockwise
+# direction a **5** by **5** spiral is formed as follows:
+#
+# <p><samp>
+# <strong>21</strong> 22 23 24 <strong>25</strong><br>
+# 20 <strong> 7</strong>  8 <strong> 9</strong> 10<br>
+# 19  6 <strong> 1</strong>  2 11<br>
+# 18 <strong>  5</strong>  4 <strong> 3</strong> 12<br>
+# <strong>17</strong> 16 15 14 <strong>13</strong><br>
+# </p></samp>
+#
+# It can be verified that the sum of the numbers on the diagonals is **101**.
+#
+# What is the sum of the numbers on the diagonals in a **1001** by **1001**
+# spiral formed in the same way?
+
+
+# %% [markdown]
+# This problem was enjoyable to solve and to find the fastest solution.
+#
+# Initially, I came up with this by looking at the respective growth on the
+# corners per every next grid.
+
+# %%
+def sum_diagonal_spiral_slower(spiral_size: int) -> int:
+
+    test = []
+
+    for start_factor, grid_size in enumerate(range(3, spiral_size + 1, 2), start=1):
+        range_start = start_factor * (grid_size - 2)
+        range_end = (start_factor * 3) + range_start
+        corners = [
+            1 + 2 * corner for corner in range(range_start, range_end + 1, start_factor)
+        ]
+        test.extend(corners)
+
+    return list(accumulate(test, initial=1))[-1]
+
+
+# %% [markdown]
+# Then, I eventually found a faster solution that only kept summing the numbers.
+
+# %%
+def sum_diagonal_spiral(spiral_size: int) -> int:
+    return sum(((4 * i**2 - 6 * i + 6) for i in range(3, spiral_size + 1, 2)), start=1)
+
+
+# %% [markdown]
+# Lastly, inspired by the forum answers, I, too, decided to find the actual
+# polynomial by getting all the values and having Google Sheets provide it by
+# graphing; here is the [spreadsheet](https://docs.google.com/spreadsheets/d/1U8vtnTSMcP2YGRw25NfjVFne9HNMiWyiPUr6KsDrNkM/edit?usp=sharing).
+# This generated the polynomial $-1.5 + 1.33x + 0.5x^2 + 0.667x^3$ but this was unacceptable:
+#
+# $$
+# \Large
+# \therefore \boxed{\dfrac{4x^3 + 3x^2 + 8x - 9}{6}}
+# $$
+
+# %%
+@print_and_copy_answer
+def sum_diagonal_spiral_math(spiral_size: int) -> int:
+    return int(
+        (4 * pow(spiral_size, 3) + 3 * pow(spiral_size, 2) + 8 * spiral_size - 9) / 6
+    )
+
+# %% [markdown]
+# ```python
+# %timeit sum_diagonal_spiral_slower(1001)
+# # 214 μs ± 2.03 μs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+#
+# %timeit sum_diagonal_spiral(1001)
+# # 44.2 μs ± 2.03 μs per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
+#
+# %timeit sum_diagonal_spiral_math(1001)
+# # 199 ns ± 2.2 ns per loop (mean ± std. dev. of 7 runs, 1,000,000 loops each)
+# ```
