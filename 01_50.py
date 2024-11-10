@@ -1,9 +1,13 @@
 # %% [markdown]
 # # Project Euler
+#
+
 
 # %%
+from collections import deque
 from collections.abc import Callable
 from datetime import date
+from fractions import Fraction
 from functools import cache, lru_cache, reduce
 from io import StringIO
 from itertools import (
@@ -21,12 +25,10 @@ import numpy as np
 import pandas as pd
 import pyperclip
 import snoop
-
-# from IPython.display import Latex, Markdown, display
+from icecream import ic
+from IPython.display import Latex, Markdown, display
 from more_itertools import sieve
 from sympy import isprime, prevprime
-
-# from icecream import ic
 
 
 def print_and_copy_answer(func: Callable):
@@ -172,7 +174,7 @@ def PE002_optimized(limit=4000000):
 
 
 # %%
-@cache
+@lru_cache
 def is_prime(num: int) -> bool:
     if num < 2:
         return False
@@ -1873,4 +1875,262 @@ pandigital_digit_sum(9)
 # If the product of these four fractions is given in its lowest common terms,
 # find the value of the denominator.
 
+
 # %%
+def digit_cancelling_fractions() -> int:
+    cases = []
+    for a in range(11, 100):
+        for b in range(a + 1, 100):
+
+            case_fraction = Fraction(a, b)
+
+            i, j = str(a)
+            x, y = str(b)
+
+            if a % 10 != 0 and b % 10 != 0:
+                if i == x and y != "0" and Fraction(f"{j}/{y}") == case_fraction:
+                    cases.append(case_fraction)
+                if i == y and x != "0" and Fraction(f"{j}/{x}") == case_fraction:
+                    cases.append(case_fraction)
+                if j == x and y != "0" and Fraction(f"{i}/{y}") == case_fraction:
+                    cases.append(case_fraction)
+                if j == y and x != "0" and Fraction(f"{i}/{x}") == case_fraction:
+                    cases.append(case_fraction)
+
+    return prod(cases).denominator
+
+
+# %%
+@print_and_copy_answer
+def find_valid_fractions() -> int:
+    return prod(
+        Fraction(p, q)
+        for p in range(1, 10)
+        for q, d in product(range(p + 1, 10), range(1, 10))
+        if d * (10 * p - q) == 9 * p * q
+    ).denominator
+
+
+# %%
+find_valid_fractions()
+
+# %% [markdown]
+# ## 34. Digit Factorials
+#
+# **145** is a curious number, as **1! + 4! + 5! = 1 + 24 + 120 = 145**.
+#
+# Find the sum of all numbers which are equal to the sum of the factorial of
+# their digits.
+#
+# Note: As **1! = 1** and **2! = 2** are not sums they are not included.
+
+
+# %%
+@print_and_copy_answer
+def digit_factorials(upper_limit: int) -> int:
+    return sum(
+        i
+        for i in range(3, upper_limit)
+        if i == sum(factorial(int(digit)) for digit in str(i))
+    )
+
+
+# %%
+digit_factorials(int(1e5))
+
+# %% [markdown]
+# ## 35. Circular Primes
+#
+# The number, $197$, is called a circular prime because all rotations of the
+# digits: $197$, $971$, and $719$, are themselves prime.
+#
+# There are thirteen such primes below $100$: $2, 3, 5, 7, 11, 13, 17, 31, 37,
+# 71, 73, 79$, and $97$.
+#
+# How many circular primes are there below one million?
+
+
+# %%
+@print_and_copy_answer
+def circular_primes(limit: int = int(1e6)) -> int:
+    primes = set(primes_to_limit_eratosthenes_sieve(limit))
+    return sum(
+        all(
+            (
+                rotation in primes
+                for rotation in (
+                    int(str(num)[i:] + str(num)[:i]) for i in range(len(str(num)))
+                )
+            )
+        )
+        for num in primes
+    )
+
+
+circular_primes()
+
+
+# %% [markdown]
+# ## 36. Double-base Palindromes
+#
+# The decimal number, **585 = 1001001001₂** (binary), is palindromic in both
+# bases.
+#
+# Find the sum of all numbers, less than one million, which are palindromic in
+# base **10** and base **2**.
+#
+# (Please note that the palindromic number, in either base, may not include
+# leading zeros.)
+
+
+# %%
+def palindrome_check(num: str | int) -> bool:
+    num = str(num)
+    return num[::-1] == num
+
+
+# %%
+@print_and_copy_answer
+def double_base_palindromes(limit: int = int(1e6)) -> int:
+    return sum(
+        digit
+        for digit in range(1, limit)
+        if palindrome_check(digit) and palindrome_check(bin(digit)[2:])
+    )
+
+
+double_base_palindromes()
+
+
+# %% [markdown]
+# ## 37. Truncatable Primes
+#
+# The number **3797** has an interesting property. Being prime itself, it is
+# possible to continuously remove digits from left to right, and remain prime at
+# each stage: **3797**, **797**, **97**, and **7**. Similarly we can work from
+# right to left: **3797**, **379**, **37**, and **3**.
+#
+# Find the sum of the only eleven primes that are both truncatable from left to
+# right and right to left.
+#
+# > **NOTE**: **2**, **3**, **5**, and **7** are not considered to be
+# > truncatable primes.
+
+
+# %%
+# First draft
+def truncatable_primes_draft(limit: int = int(1e6)) -> int:
+    primes = set(primes_to_limit_eratosthenes_sieve(limit))
+
+    truncatable = set()
+
+    for prime in primes:
+        checks = []
+        str_test = str(prime)
+        for i in range(len(str_test)):
+            l_to_r = str_test[i:]
+            r_to_l = str_test[:i]
+            r_to_l_fix = str_test if r_to_l == "" else r_to_l
+
+            checks.extend((int(r_to_l_fix) in primes, int(l_to_r) in primes))
+        if all(checks):
+            truncatable.add(prime)
+
+    return sum(truncatable - {2, 3, 5, 7})
+
+
+# %%
+@print_and_copy_answer
+def truncatable_primes(limit: int = int(1e6)) -> int:
+    primes = set(primes_to_limit_eratosthenes_sieve(limit))
+    return sum(
+        {
+            prime
+            for prime in primes
+            if (str_prime := str(prime))
+            and all(
+                int(str_prime[i:]) in primes
+                and int(str_prime[:i] or str_prime) in primes
+                for i in range(len(str_prime))
+            )
+        }
+        - {2, 3, 5, 7}
+    )
+
+
+truncatable_primes()
+
+
+# %%
+# This code isn't mine but I found it interesting as it is 100x faster than my
+# solution
+def truncatable_primes_fastest() -> int:
+    def is_prime_test(n: int) -> bool:
+        if n in {2, 3}:
+            return True
+        if n % 2 == 0 or n % 3 == 0 or n < 2:
+            return False
+
+        # Check numbers of form 6k±1 up to sqrt(n)
+        return not any(
+            n % (i - 1) == 0 or n % (i + 1) == 0 for i in range(6, isqrt(n) + 2, 6)
+        )
+
+    def is_left_truncatable(n: int) -> bool:
+        mod = 10
+        while mod < n:
+            if not is_prime_test(n % mod):
+                return False
+            mod *= 10
+        return True
+
+    # Digits that could potentially follow in a prime number
+    append_digits = [1, 3, 7, 9]
+
+    # Initialize queue with single-digit primes
+    queue = deque([2, 3, 5, 7])
+    total = 0
+
+    while queue:
+        current = queue.popleft()
+
+        # Try appending each valid digit
+        for digit in append_digits:
+            candidate = current * 10 + digit
+
+            # Check if the new number is prime
+            if not is_prime(candidate):
+                continue
+
+            queue.append(candidate)
+
+            # Only need to check left truncatable as right truncatable
+            # is guaranteed by our construction method
+            if is_left_truncatable(candidate):
+                total += candidate
+
+    return total
+
+
+# %% [markdown]
+# ## 38. Pandigital Multiples
+#
+# Take the number **192** and multiply it by each of **1**, **2**, and **3**:
+#
+# > ```
+# > 192 × 1 = 192
+# > 192 × 2 = 384
+# > 192 × 3 = 576
+# > ```
+#
+# By concatenating each product we get the **1** to **9** pandigital,
+# **192384576**. We will call **192384576** the concatenated product of **192**
+# and **(1,2,3)**.
+#
+# The same can be achieved by starting with **9** and multiplying by **1**,
+# **2**, **3**, **4**, and **5**, giving the pandigital, **918273645**, which is
+# the concatenated product of **9** and **(1,2,3,4,5)**.
+#
+# What is the largest **1** to **9** pandigital **9**-digit number that can be
+# formed as the concatenated product of an integer with **(1,2, ⋯, n)** where
+# **n > 1**?
